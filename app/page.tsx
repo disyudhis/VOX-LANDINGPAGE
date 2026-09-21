@@ -1,11 +1,23 @@
+import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
-import Features from "@/components/Features";
+import Marquee from "@/components/Marquee";
+import About from "@/components/About";
+import VoxNative from "@/components/VoxNative";
+import Career from "@/components/Career";
+import Collab from "@/components/Collab";
 
 export default function Home() {
   return (
-    <main>
-      <Hero />
-      <Features />
-    </main>
+    <>
+      <Navbar />
+      <main>
+        <Hero />
+        <Marquee />
+        <About />
+        <VoxNative />
+        <Career />
+        <Collab />
+      </main>
+    </>
   );
 }
