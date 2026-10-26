@@ -12,8 +12,7 @@ export default function Home() {
       <Navbar />
       <main>
         <Hero />
-        <Marquee />
-        <About />
+        {/* <About /> */}
         <VoxNative />
         <Career />
         <Collab />

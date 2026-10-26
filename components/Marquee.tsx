@@ -1,4 +1,4 @@
-const items = ["MEDIA PARTNER", "BANDUNG", "VOX NATIVE", "REVIEW", "KOLABORASI"];
+const items = ["MEDIA PARTNER", "REVIEW", "KOLABORASI"];
 
 export default function Marquee() {
   const row = [...items, ...items];

@@ -9,10 +9,6 @@ body {
   color: #fff;
 }
 
-html {
-  scroll-behavior: smooth;
-}
-
 section[id] {
   scroll-margin-top: 4rem;
 }
@@ -43,11 +39,6 @@ section[id] {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-}
 @media (hover: hover) {
   .brand-row:hover .brand-track {
     animation-play-state: paused;

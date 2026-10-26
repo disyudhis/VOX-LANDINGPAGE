@@ -10,8 +10,8 @@ gsap.registerPlugin(useGSAP, ScrollTrigger);
 const stats = [
     { value: 50, suffix: "+", label: "Brand partner" },
     { value: 120, suffix: "+", label: "Konten review" },
-    { value: 5, suffix: "", label: "Tahun berkarya" },
-    { value: 100, suffix: "K+", label: "Jangkauan bulanan" },
+    { value: 3, suffix: "", label: "Tahun berkarya" },
+    { value: 300, suffix: "M+", label: "Insight bulanan" },
 ];
 
 export default function Stats() {

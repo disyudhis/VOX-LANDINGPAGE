@@ -10,7 +10,7 @@ export default function Collab() {
                 Ayo kolaborasi.
             </h2>
             <p className="max-w-md text-lg text-neutral-400">
-                VOX terbuka untuk kolaborasi review brand, hotel, cafe, dan lainnya.
+                Kami terbuka untuk kolaborasi review brand, hotel, cafe, dan lainnya.
             </p>
             <a
                 href="https://wa.me/62XXXXXXXXXX"
@@ -19,7 +19,7 @@ export default function Collab() {
                 Hubungi Kami
             </a>
             <footer className="mt-16 text-sm text-neutral-600">
-                © {new Date().getFullYear()} VOX. Bandung.
+                © {new Date().getFullYear()} VOXNATIVE.
             </footer>
         </section>
     );
