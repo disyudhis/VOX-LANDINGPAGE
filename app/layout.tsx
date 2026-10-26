@@ -11,9 +11,9 @@ const roboto = Roboto({
 });
 
 export const metadata: Metadata = {
-  title: "VOX | Media Partner Pioneer di Bandung",
+  title: "VOXNATIVE NETWORKS",
   description:
-    "VOX adalah media partner pioneer di Bandung. Lewat VOX Native, kami mereview hotel, cafe, dan brand pilihan.",
+    "Our Voices Are The Move.",
 };
 
 export default function RootLayout({

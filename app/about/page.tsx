@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import AboutSlides from "@/components/about/AboutSlides";
 
 export const metadata: Metadata = {
-  title: "Tentang VOXNATIVE | Global News, Pop Culture, and Everything In-Between",
+  title: "About Us | VOXNATIVE NETWORKS",
   description:
-    "Tempat paling pas buat mantengin update berita dunia, nemenin waktu luang lewat racikan meme, quote, dan konten harian redaksi.",
+    "More Than A Media Partner",
 };
 
 export default function AboutPage() {
