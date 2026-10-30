@@ -4,13 +4,43 @@
   --font-sans: var(--font-roboto);
 }
 
+/* Warna aksen kategori (sama dengan pill di Hero & "Yang kami bikin"),
+   dipakai ulang di chapter baru: bg-vox-lime, text-vox-news, dst. */
+@theme {
+  --color-vox-news: #38bdf8;
+  --color-vox-studi: #a78bfa;
+  --color-vox-lime: #d7ff3f;
+  --color-vox-pink: #ff6b9a;
+  --color-vox-red: #ff3b30;
+}
+
 body {
   background: #000;
   color: #fff;
+  /* Cegah scroll horizontal tak sengaja (badge/pill yang sengaja keluar tepi layar) */
+  overflow-x: clip;
 }
 
 section[id] {
   scroll-margin-top: 4rem;
+}
+
+/* ---- Lenis ---- */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
 }
 
 .brand-track {

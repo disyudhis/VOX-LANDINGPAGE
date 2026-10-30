@@ -25,7 +25,7 @@ const TEAM: Member[] = [
     { id: "m2", src: `${P}/sasa.png`, name: "Sasa", role: "Co-Founder", accent: "#4DB5F5" },
     { id: "m3", src: `${P}/jul.png`, name: "Julius", role: "Project Officer", accent: "#F2432E" },
     { id: "m4", src: `${P}/yudhis.png`, name: "Yudhis", role: "Marketing Officer", accent: "#F26B9B" },
-    { id: "m5", src: `${P}/vino.png`, name: "Vino", role: "Social Media Specialist", accent: "#A98BFA" },
+    { id: "m5", src: `${P}/vino.png`, name: "Vino", role: "Socmed Specialist", accent: "#A98BFA" },
     // fill in:  name: "…", role: "…"
 ];
 
@@ -80,8 +80,34 @@ export default function Slide4Team({ active = true }: Props) {
             };
             hidden();
 
+            // Instant final state (reduced motion / resize). Uses plain sets, NOT a zero-duration timeline,
+            // which could be left on its hidden "from" state on iOS Safari.
+            const settle = (n: number) => {
+                tl?.kill();
+                tl = null;
+                q(".tm-hd").forEach((h, i) => {
+                    gsap.set(h, { autoAlpha: i === n ? 1 : 0 });
+                    gsap.set(h.querySelectorAll(".tm-line > span"), { yPercent: 0, rotate: 0, skewY: 0 });
+                });
+                gsap.set(q(".tm-photo"), { autoAlpha: n === 0 ? 1 : 0, clipPath: "inset(0% 0% 0% 0%)" });
+                gsap.set(q(".tm-photo img"), { scale: 1 });
+                gsap.set(q(".tm-label"), { autoAlpha: n === 0 ? 1 : 0, scale: n === 0 ? 1 : 0, rotation: -3 });
+                q(".tm-card").forEach((c, i) => {
+                    if (n === 0) {
+                        gsap.set(c, { autoAlpha: 0, scale: 0.3, left: "46%", top: "38%", rotation: 0 });
+                    } else {
+                        const L = lay()[i];
+                        gsap.set(c, { left: `${L.left}%`, top: `${L.top}%`, width: `${L.w}vw`, rotation: L.rot, autoAlpha: 1, scale: 1 });
+                    }
+                });
+                gsap.set(q(".tm-cue"), { autoAlpha: n === 1 ? 1 : 0 });
+                prev = n;
+                stageRef.current = n;
+            };
+
             const show = (n: number, instant = false) => {
-                const d = instant || reduced ? 0 : 1;
+                if (instant || reduced) { settle(n); return; }
+                const d = 1;
                 tl?.kill();
                 tl = gsap.timeline({ defaults: { ease: "power4.out" } });
 
@@ -157,9 +183,12 @@ export default function Slide4Team({ active = true }: Props) {
 
             // re-apply the current stage instantly when the breakpoint / size changes
             let raf = 0;
+            let lastW = window.innerWidth;
             const onResize = () => {
                 cancelAnimationFrame(raf);
                 raf = requestAnimationFrame(() => {
+                    if (window.innerWidth === lastW) return; // height-only change = mobile browser toolbar, ignore
+                    lastW = window.innerWidth;
                     if (activeRef.current && prev >= 0) show(stageRef.current, true);
                 });
             };

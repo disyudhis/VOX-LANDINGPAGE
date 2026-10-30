@@ -78,6 +78,49 @@ export default function SlideDeck({ slides }: { slides: SlideDef[] }) {
     { scope: root }
   );
 
+  // MOBILE: slide tersusun vertikal dan halaman di-scroll natural, jadi tidak ada Observer yang
+  // mengubah `index`. Tanpa ini hanya slide 1 yang pernah "aktif" dan slide lain (mis. Team) kosong.
+  // Slide yang paling terlihat di layar dijadikan slide aktif.
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    let io: IntersectionObserver | null = null;
+
+    const start = () => {
+      io?.disconnect();
+      io = null;
+      if (!mq.matches || !root.current) return;
+
+      const els = Array.from(root.current.querySelectorAll<HTMLElement>("[data-slide]"));
+      const ratios = els.map(() => 0);
+
+      io = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((e) => {
+            const i = Number((e.target as HTMLElement).dataset.slide);
+            ratios[i] = e.isIntersecting ? e.intersectionRatio : 0;
+          });
+          let best = 0;
+          ratios.forEach((r, i) => {
+            if (r > ratios[best]) best = i;
+          });
+          if (ratios[best] > 0 && best !== indexRef.current) {
+            indexRef.current = best;
+            setIndex(best);
+          }
+        },
+        { threshold: [0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1] }
+      );
+      els.forEach((el) => io!.observe(el));
+    };
+
+    start();
+    mq.addEventListener("change", start);
+    return () => {
+      mq.removeEventListener("change", start);
+      io?.disconnect();
+    };
+  }, [slides.length]);
+
   return (
     <div
       ref={root}
@@ -93,9 +136,8 @@ export default function SlideDeck({ slides }: { slides: SlideDef[] }) {
             onClick={() => goTo(i)}
             aria-label={s.title}
             aria-pressed={index === i}
-            className={`h-2 w-2 rounded-full border border-white/40 transition-all ${
-              index === i ? "scale-125 bg-white" : "bg-transparent hover:bg-white/40"
-            }`}
+            className={`h-2 w-2 rounded-full border border-white/40 transition-all ${index === i ? "scale-125 bg-white" : "bg-transparent hover:bg-white/40"
+              }`}
           />
         ))}
       </div>
@@ -105,7 +147,7 @@ export default function SlideDeck({ slides }: { slides: SlideDef[] }) {
         className="flex flex-col md:h-full md:will-change-transform"
       >
         {slides.map((s, i) => (
-          <div key={s.id} className="min-h-svh w-full pt-20 md:h-svh md:shrink-0 md:pt-0">
+          <div key={s.id} data-slide={i} className="min-h-svh w-full pt-20 md:h-svh md:shrink-0 md:pt-0">
             {s.render(index === i)}
           </div>
         ))}

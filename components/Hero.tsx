@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import type { PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import Image from "next/image";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -10,9 +10,16 @@ import { useGSAP } from "@gsap/react";
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
 const HASHTAG = "#OurVoicesAreTheMove";
+// Dipecah per kata supaya bisa masuk bergantian. Disambung tanpa spasi = tetap terbaca satu hashtag.
+const HASHTAG_PARTS = ["#Our", "Voices", "Are", "The", "Move"];
 const MAX_TILT = 14; // derajat tilt logo
 const POOL = 18; // jumlah stempel yang didaur ulang
 const STEP = 48; // jarak (px) antar stempel saat cursor bergerak
+
+const WALL_SRC = "/hero/collage-wallpaper.png";
+// Frame strip hanya tampil kecil (~150px × zoom), jadi pakai versi yang sudah dioptimasi & diperkecil
+// oleh Next, bukan PNG mentah. (w=1200, q=75 termasuk nilai bawaan Next.)
+const WALL_FRAME_SRC = "/_next/image?url=%2Fhero%2Fcollage-wallpaper.png&w=1200&q=75";
 
 type Badge = {
   label: string;
@@ -34,10 +41,80 @@ const badges: Badge[] = [
   { label: "Challenge", emoji: "🔥", color: "#FF3B30", pos: "left-1/2 top-[3%] -translate-x-1/2", rotate: 4, big: true },
 ];
 
-export default function Hero() {
+/* ------------------------------------------------------------------ */
+/* Strip film: tiap frame = "jendela" ke satu area wallpaper kolase.   */
+/* Titik tengah tile (fx, fy) = posisi 0–1 di dalam wallpaper.         */
+/* Kalau crop terasa meleset, ubah WALL_ASPECT / ZOOM / TILES.         */
+/* ------------------------------------------------------------------ */
+const WALL_ASPECT = 1.81; // lebar ÷ tinggi wallpaper
+const ZOOM = 4.5; // seberapa besar wallpaper diperbesar dalam satu frame (≈ 1 tile per frame)
+
+const TILES: Record<string, [number, number]> = {
+  a: [0.075, 0.45],
+  b: [0.27, 0.45],
+  c: [0.5, 0.45],
+  d: [0.73, 0.45],
+  e: [0.925, 0.45],
+  f: [0.27, 0.8],
+  g: [0.5, 0.8],
+  h: [0.73, 0.8],
+};
+
+function frameStyle(key: string): CSSProperties {
+  const [fx, fy] = TILES[key];
+  const sx = ZOOM; // lebar gambar ÷ lebar frame
+  const sy = (ZOOM * 0.75) / WALL_ASPECT; // frame 3:4 → tinggi gambar ÷ tinggi frame
+  const clamp = (v: number) => Math.min(100, Math.max(0, v));
+  const px = clamp(((fx * sx - 0.5) / (sx - 1)) * 100);
+  const py = clamp(((fy * sy - 0.5) / (sy - 1)) * 100);
+  return {
+    backgroundImage: `url(${WALL_FRAME_SRC})`,
+    backgroundSize: `${ZOOM * 100}% auto`,
+    backgroundPosition: `${px}% ${py}%`,
+  };
+}
+
+type Strip = { id: string; rot: number; speed: number; frames: string[] };
+
+const strips: Strip[] = [
+  { id: "s1", rot: -7, speed: 70, frames: ["b", "a", "f"] },
+  { id: "s2", rot: 5, speed: 130, frames: ["c", "g", "b"] },
+  { id: "s3", rot: 6, speed: 90, frames: ["d", "h", "e"] },
+  { id: "s4", rot: -5, speed: 150, frames: ["e", "c", "f"] },
+];
+
+const css = `
+.hx-strip{position:absolute; z-index:2; will-change:transform}
+.hx-s1{left:1%; top:-8%; width:clamp(120px,11vw,190px)}
+.hx-s2{left:13.5%; top:30%; width:clamp(110px,10vw,175px)}
+.hx-s3{right:12.5%; top:-4%; width:clamp(110px,10vw,175px)}
+.hx-s4{right:1%; top:32%; width:clamp(120px,11vw,190px)}
+.hx-strip-in{position:relative; background:#080808; border:1px solid #262626; padding:10px 14px; display:flex; flex-direction:column; gap:8px;
+  box-shadow:0 18px 40px rgba(0,0,0,.55)}
+/* lubang perforasi film di kiri & kanan */
+.hx-strip-in::before,.hx-strip-in::after{content:""; position:absolute; top:0; bottom:0; width:5px;
+  background:repeating-linear-gradient(to bottom,transparent 0 6px,rgba(255,255,255,.5) 6px 12px)}
+.hx-strip-in::before{left:4px}
+.hx-strip-in::after{right:4px}
+.hx-frame{aspect-ratio:3/4; width:100%; background-color:#111; filter:grayscale(1) contrast(1.12); border:1px solid #1d1d1d}
+@media (max-width:1023px){
+  .hx-s2,.hx-s4{display:none}
+}
+@media (max-width:767px){
+  .hx-s1{left:-7%; top:6%; width:26vw}
+  .hx-s3{right:-7%; top:38%; width:26vw}
+  .hx-strip-in{padding:7px 10px; gap:6px}
+}
+`;
+
+type HeroProps = { active?: boolean; deck?: boolean };
+
+export default function Hero({ active = true, deck = false }: HeroProps) {
   const container = useRef<HTMLElement>(null);
+  const wall = useRef<HTMLDivElement>(null);
   const bg = useRef<HTMLDivElement>(null);
   const overlay = useRef<HTMLDivElement>(null);
+  const content = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const logoWrap = useRef<HTMLDivElement>(null);
   const quickRotX = useRef<((v: number) => void) | null>(null);
@@ -45,101 +122,109 @@ export default function Hero() {
   const lastPos = useRef<{ x: number; y: number } | null>(null);
   const poolIdx = useRef(0);
   const [copied, setCopied] = useState(false);
+  const introRef = useRef<gsap.core.Timeline | null>(null);
+  const wasActive = useRef(active);
+
+  // Mode deck: kembali ke slide ini = pembukaan diputar lagi (sama seperti slide About)
+  useEffect(() => {
+    if (deck && active && !wasActive.current) introRef.current?.restart();
+    wasActive.current = active;
+  }, [active, deck]);
 
   const { contextSafe } = useGSAP(
     () => {
       const mm = gsap.matchMedia();
 
+      /* ================= PEMBUKAAN (≈ 1,6 dtk, CTA tidak ditahan) ================= */
       mm.add("(prefers-reduced-motion: no-preference)", () => {
-        gsap.from(".hero-fade", {
-          y: 26,
-          opacity: 0,
-          duration: 0.9,
-          stagger: 0.12,
-          ease: "power3.out",
-        });
+        const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+        introRef.current = tl;
 
-        gsap.to(logoWrap.current, {
-          y: -12,
-          duration: 2.6,
-          ease: "sine.inOut",
-          repeat: -1,
-          yoyo: true,
-        });
+        // 1. Dinding kolase terbuka seperti celah letterbox, lalu menyusut ke ukuran normal
+        tl.fromTo(
+          wall.current,
+          { clipPath: "inset(46% 0% 46% 0%)" },
+          { clipPath: "inset(0% 0% 0% 0%)", duration: 1.1, ease: "expo.inOut", clearProps: "clipPath" },
+          0
+        )
+          .fromTo(bg.current, { scale: 1.18, yPercent: -4 }, { scale: 1.15, yPercent: -4, duration: 1.6, ease: "expo.out" }, 0)
 
-        // Overlay menipis seiring scroll, collage jadi lebih "terlihat"
-        gsap.fromTo(
-          overlay.current,
-          { opacity: 0.88 },
-          {
-            opacity: 0.62,
-            ease: "none",
-            scrollTrigger: {
-              trigger: container.current,
-              start: "top top",
-              end: "bottom top",
-              scrub: true,
+          // 2. Strip film meluncur masuk berlapis
+          .fromTo(
+            ".hx-strip",
+            { yPercent: 28, opacity: 0, rotation: (_i: number, el: HTMLElement) => Number(el.dataset.rot) + 7 },
+            {
+              yPercent: 0,
+              opacity: 1,
+              rotation: (_i: number, el: HTMLElement) => Number(el.dataset.rot),
+              duration: 0.95,
+              stagger: 0.09,
             },
-          }
-        );
-      });
+            0.15
+          )
 
-      // Zoom-out + parallax wallpaper, jalan di desktop & HP
-      mm.add("(prefers-reduced-motion: no-preference)", () => {
+          // 3. Logo: disapu dari kiri ke kanan, jadi titik fokus pertama
+          .fromTo(".hero-stage", { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.7 }, 0.3)
+          .fromTo(
+            ".hero-logo-img",
+            { clipPath: "inset(0% 100% 0% 0%)" },
+            { clipPath: "inset(0% 0% 0% 0%)", duration: 1.0, ease: "expo.out", clearProps: "clipPath" },
+            0.35
+          )
+
+          // 4. Hashtag masuk kata per kata
+          .from(".hx-tok", { yPercent: 115, duration: 0.7, stagger: 0.06 }, 0.6)
+
+          // 5. CTA muncul cepat, tidak menunggu urutan lain
+          .from(".hero-cta", { opacity: 0, y: 16, duration: 0.5 }, 0.45)
+
+          // 6. Label kategori menyusul terakhir, pelan, tidak berebut dengan logo
+          .from(
+            ".badge-orbit, .badge-chip",
+            { scale: 0, opacity: 0, duration: 0.55, stagger: { each: 0.07, from: "random" }, ease: "back.out(2.2)" },
+            0.95
+          )
+          .from(".hero-chips", { opacity: 0, duration: 0.4 }, 0.9);
+
+        // Logo melayang sangat pelan (satu-satunya gerak idle)
+        if (window.matchMedia("(min-width: 768px)").matches) {
+          gsap.to(logoWrap.current, {
+            y: -6,
+            duration: 4,
+            ease: "sine.inOut",
+            repeat: -1,
+            yoyo: true,
+            delay: 1.5,
+          });
+        }
+
+        /* ================= TRANSISI KELUAR ke "Yang kami bikin" ================= */
+        const scrub = {
+          trigger: container.current,
+          start: "top top",
+          end: "bottom top",
+          scrub: true,
+        } as const;
+
+        // Dinding makin gelap sampai hitam pekat, menyatu dengan section berikutnya
+        gsap.fromTo(overlay.current, { opacity: 0.86 }, { opacity: 1, ease: "power1.in", scrollTrigger: scrub });
+
+        // Wallpaper zoom-out pelan
         gsap.fromTo(
           bg.current,
-          { scale: 1.15, yPercent: -5 },
-          {
-            scale: 1,
-            yPercent: 5,
-            ease: "none",
-            scrollTrigger: {
-              trigger: container.current,
-              start: "top top",
-              end: "bottom top",
-              scrub: true,
-            },
-          }
+          { scale: 1.15, yPercent: -4 },
+          { scale: 1, yPercent: 4, ease: "none", scrollTrigger: scrub, immediateRender: false }
         );
-      });
 
-      // Badge "sticker": meledak masuk dengan pantulan, lalu goyang + melayang terus. Desktop saja.
-      mm.add("(min-width: 768px) and (prefers-reduced-motion: no-preference)", () => {
-        const items = gsap.utils.toArray<HTMLElement>(".badge-orbit");
-
-        gsap.from(items, {
-          scale: 0,
-          opacity: 0,
-          duration: 0.7,
-          stagger: { each: 0.08, from: "random" },
-          delay: 0.4,
-          ease: "back.out(2.4)",
+        // Strip film naik dengan kecepatan berbeda-beda (kedalaman halus)
+        gsap.utils.toArray<HTMLElement>(".hx-strip").forEach((el) => {
+          gsap.to(el, { y: -Number(el.dataset.speed), ease: "none", scrollTrigger: scrub });
         });
 
-        items.forEach((el, i) => {
-          const base = Number(el.dataset.rotate) || 0;
-          gsap.to(el, {
-            y: gsap.utils.random(-16, -10),
-            rotation: base + gsap.utils.random(-7, 7),
-            duration: gsap.utils.random(2.2, 3.6),
-            delay: 1 + i * 0.1,
-            ease: "sine.inOut",
-            yoyo: true,
-            repeat: -1,
-          });
-        });
-      });
-
-      // Chip meledak masuk bergantian, acak. HP saja, tanpa gerak idle (hemat baterai).
-      mm.add("(max-width: 767px) and (prefers-reduced-motion: no-preference)", () => {
-        gsap.from(".badge-chip", {
-          scale: 0,
-          opacity: 0,
-          duration: 0.55,
-          stagger: { each: 0.07, from: "random" },
-          delay: 0.5,
-          ease: "back.out(2.4)",
-        });
+        // Konten naik pelan lalu memudar di paruh akhir
+        // Badge ikut memudar bersama konten (sebelumnya tertinggal terang setelah logo hilang)
+        gsap.to(".hero-badges", { opacity: 0, ease: "power1.in", scrollTrigger: scrub });
+        gsap.to(content.current, { yPercent: -14, opacity: 0, ease: "power1.in", scrollTrigger: scrub });
       });
 
       quickRotX.current = gsap.quickTo(logoWrap.current, "rotationX", {
@@ -274,11 +359,13 @@ export default function Hero() {
       }}
       className="relative flex min-h-svh flex-col items-center justify-center overflow-hidden px-6 text-center"
     >
-      {/* Wallpaper collage */}
-      <div className="absolute inset-0 z-0 overflow-hidden">
-        <div ref={bg} className="absolute inset-0 will-change-transform">
+      <style>{css}</style>
+
+      {/* Dinding kolase (wallpaper utuh, digelapkan supaya logo tetap jadi fokus) */}
+      <div ref={wall} className="absolute inset-0 z-0 overflow-hidden">
+        <div ref={bg} className="absolute inset-0 will-change-transform" style={{ transform: "scale(1.15)" }}>
           <Image
-            src="/hero/collage-wallpaper.png"
+            src={WALL_SRC}
             alt="Kumpulan momen di balik layar VOXNATIVE"
             fill
             priority
@@ -288,15 +375,34 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Gradasi gelap supaya logo, hashtag & badge tetap kontras */}
+      {/* Gradasi gelap: tepi hitam pekat, tengah sedikit terang di balik logo */}
       <div
         ref={overlay}
         aria-hidden
-        className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.65)_0%,rgba(0,0,0,0.88)_60%,#000_100%)]"
-        style={{ opacity: 0.88 }}
+        className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.65)_0%,rgba(0,0,0,0.88)_60%,#000_100%)] will-change-[opacity]"
+        style={{ opacity: 0.86 }}
       />
 
-      {/* Lapisan stempel trail, di atas wallpaper, di bawah konten */}
+      {/* Strip film: potongan kolase yang sama, dimiringkan dan ditumpuk di sisi kiri-kanan */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 z-[2] overflow-hidden">
+        {strips.map((s) => (
+          <div
+            key={s.id}
+            data-rot={s.rot}
+            data-speed={s.speed}
+            className={`hx-strip hx-${s.id}`}
+            style={{ transform: `rotate(${s.rot}deg)` }}
+          >
+            <div className="hx-strip-in">
+              {s.frames.map((k, i) => (
+                <div key={i} className="hx-frame" style={frameStyle(k)} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Lapisan stempel trail */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 z-[2] overflow-hidden"
@@ -311,7 +417,7 @@ export default function Hero() {
       </div>
 
       {/* Badge sticker, hanya desktop */}
-      <div className="hero-fade pointer-events-none absolute inset-0 z-[3] hidden md:block">
+      <div className="hero-badges pointer-events-none absolute inset-0 z-[3] hidden md:block">
         {badges.map((b) => (
           <a
             key={b.label}
@@ -331,7 +437,13 @@ export default function Hero() {
         ))}
       </div>
 
-      <div className="relative z-10 flex flex-col items-center gap-8">
+      {/* Lebur ke hitam di tepi bawah, menyambung ke section berikutnya */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-[4] h-28 bg-gradient-to-b from-transparent to-black"
+      />
+
+      <div ref={content} className="relative z-10 flex flex-col items-center gap-8">
         <div
           ref={stage}
           onPointerMove={handleStageMove}
@@ -339,7 +451,7 @@ export default function Hero() {
           onPointerDown={() => setPressed(true)}
           onPointerUp={handleStageUp}
           onPointerCancel={handleStageUp}
-          className="hero-fade touch-none select-none py-6 [perspective:900px]"
+          className="hero-stage touch-pan-y select-none py-6 [perspective:900px]"
         >
           <div
             ref={logoWrap}
@@ -352,7 +464,7 @@ export default function Hero() {
               height={436}
               draggable={false}
               sizes="(min-width: 768px) 576px, 78vw"
-              className="h-auto w-full select-none"
+              className="hero-logo-img h-auto w-full select-none"
               loading="eager"
             />
           </div>
@@ -361,13 +473,18 @@ export default function Hero() {
         <button
           type="button"
           onClick={copyHashtag}
-          className="hero-fade group relative text-2xl font-bold italic tracking-tight text-neutral-300 transition-colors hover:text-white md:text-4xl"
+          aria-label={HASHTAG}
+          className="group relative text-2xl font-bold italic tracking-tight text-neutral-300 transition-colors hover:text-white md:text-4xl"
         >
-          {HASHTAG}
+          {HASHTAG_PARTS.map((p) => (
+            <span key={p} aria-hidden className="-mr-[0.06em] inline-block overflow-hidden pb-[0.12em] pr-[0.06em] align-bottom">
+              <span className="hx-tok inline-block">{p}</span>
+            </span>
+          ))}
         </button>
 
         {/* Baris chip sticker, hanya HP */}
-        <div className="hero-fade -mx-6 flex gap-3 overflow-x-auto px-6 pb-2 md:hidden">
+        <div className="hero-chips -mx-6 flex gap-3 overflow-x-auto px-6 pb-2 md:hidden">
           {badges.map((b) => (
             <a
               key={b.label}
@@ -387,7 +504,7 @@ export default function Hero() {
 
         <a
           href="#contact"
-          className="hero-fade rounded-full bg-white px-8 py-3 font-bold italic text-black"
+          className="hero-cta rounded-full bg-white px-8 py-3 font-bold italic text-black"
         >
           Kolaborasi dengan VOX
         </a>

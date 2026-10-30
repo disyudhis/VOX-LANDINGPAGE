@@ -1,22 +1,11 @@
-import Navbar from "@/components/Navbar";
-import Hero from "@/components/Hero";
-import Marquee from "@/components/Marquee";
-import About from "@/components/About";
-import VoxNative from "@/components/VoxNative";
-import Career from "@/components/Career";
-import Collab from "@/components/Collab";
+// (main)/page.tsx
+// Navbar dirender oleh (main)/layout.tsx. Empat bab homepage disusun sebagai deck di HomeSlides.
+import HomeSlides from "@/components/home/HomeSlides";
 
 export default function Home() {
   return (
-    <>
-      <Navbar />
-      <main>
-        <Hero />
-        {/* <About /> */}
-        <VoxNative />
-        <Career />
-        <Collab />
-      </main>
-    </>
+    <main>
+      <HomeSlides />
+    </main>
   );
 }
