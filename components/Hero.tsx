@@ -384,7 +384,7 @@ export default function Hero({ active = true, deck = false }: HeroProps) {
       />
 
       {/* Strip film: potongan kolase yang sama, dimiringkan dan ditumpuk di sisi kiri-kanan */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 z-[2] overflow-hidden">
+      {/* <div aria-hidden className="pointer-events-none absolute inset-0 z-[2] overflow-hidden">
         {strips.map((s) => (
           <div
             key={s.id}
@@ -400,7 +400,7 @@ export default function Hero({ active = true, deck = false }: HeroProps) {
             </div>
           </div>
         ))}
-      </div>
+      </div> */}
 
       {/* Lapisan stempel trail */}
       <div
