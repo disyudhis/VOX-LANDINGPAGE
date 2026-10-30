@@ -16,7 +16,7 @@ const MAX_TILT = 14; // derajat tilt logo
 const POOL = 18; // jumlah stempel yang didaur ulang
 const STEP = 48; // jarak (px) antar stempel saat cursor bergerak
 
-const WALL_SRC = "/hero/collage-wallpaper.png";
+const WALL_SRC = "/hero/hero-wallpaper.jpg";
 // Frame strip hanya tampil kecil (~150px × zoom), jadi pakai versi yang sudah dioptimasi & diperkecil
 // oleh Next, bukan PNG mentah. (w=1200, q=75 termasuk nilai bawaan Next.)
 const WALL_FRAME_SRC = "/_next/image?url=%2Fhero%2Fcollage-wallpaper.png&w=1200&q=75";
